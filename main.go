@@ -1,5 +1,6 @@
 //go:generate goversioninfo -icon=postgresql.ico -manifest=PostgreSQLPortable.manifest
 // +build windows
+// +build 386 amd64
 
 package main
 
@@ -9,23 +10,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"syscall"
-
-	"github.com/lxn/walk"
 )
 
-var (
-	dir, _      = filepath.Abs(filepath.Dir(os.Args[0]))
-	pgInitdb    = filepath.Join(dir, "/bin/initdb")
-	pgCtl       = filepath.Join(dir, "/bin/pg_ctl")
-	pgShell     = filepath.Join(dir, "/bin/psql")
-	dataDir     = filepath.Join(dir, "/data")
-	pgHba       = filepath.Join(dir, "/data/pg_hba.conf")
-	logDir      = filepath.Join(dir, "/log")
-	logFile     = filepath.Join(logDir, "/postgres.log")
-	logPsqlFile = filepath.Join(logDir, "/psql.log")
-	username    = "postgres"
+const (
+	configFile = "PostgreSQLPortable.json"
 
-	strExit            = "E&xit"
+	strExit            = "Exit"
 	strHelp            = "Use the context menu to manage."
 	strInit            = "Initializing..."
 	strInitFinished    = "Initializing finished"
@@ -37,165 +27,92 @@ var (
 	strStop            = "Stop PostgreSQL Server"
 	strStopped         = "Server Stopped"
 	strTitle           = "PostgreSQL Portable"
-
-	cmdInitDbArgs     = []string{"-D", dataDir, "-U", username, "-A", "trust", "-E", "UTF8", "--locale=russian_russia", "-k", "-n"}
-	cmdStartArgs      = []string{"-D", dataDir, "-l", logFile, "-w", "start"}
-	cmdStopArgs       = []string{"-D", dataDir, "stop"}
-	cmdStatusArgs     = []string{"-D", dataDir, "status"}
-	cmdStartShellArgs = []string{"/C", "start", "/wait", pgShell, "-L", logPsqlFile, "-U", username, username}
-
-	serverStatus         = false
-	serverPid            int
-	ni                   *walk.NotifyIcon
-	statusPgServerAction *walk.Action
-	startPgServerAction  *walk.Action
-	stopPgServerAction   *walk.Action
-	startPgShellAction   *walk.Action
 )
 
+var (
+	ps           = string(filepath.Separator)
+	dir, _       = filepath.Abs(filepath.Dir(os.Args[0]))
+	pgsqlBaseDir = filepath.Join(dir, "pgsql")
+	downloadDir  = filepath.Join(dir, "pgsql-downloads")
+	username     = "postgres"
+
+	pgInitdb, pgCtl, pgShell, dataDir, pgHba, logDir, logFile, logPsqlFile     string
+	cmdInitDbArgs, cmdStartArgs, cmdStopArgs, cmdStatusArgs, cmdStartShellArgs []string
+
+	serverStatus = false
+	serverPid    int
+
+	osName, osArch string
+	archiveType    string
+	conf           *Configuration
+)
+
+func init() {
+	checkOs()
+	checkArch()
+	checkArchiveType()
+	conf = new(Configuration)
+	loadConfig()
+	setPaths()
+}
+
 func main() {
-	mw, err := walk.NewMainWindow()
-	if err != nil {
-		log.Fatal(err)
-	}
+	createTray()
+}
 
-	icon, err := walk.NewIconFromResourceId(10)
-	if err != nil {
-		log.Fatal(err)
-	}
+func setPaths() {
+	if len(conf.UsedVersion) > 0 {
+		pgInitdb = filepath.Join(pgsqlBaseDir, conf.UsedVersion, "bin/initdb")
+		pgCtl = filepath.Join(pgsqlBaseDir, conf.UsedVersion, "bin/pg_ctl")
+		pgShell = filepath.Join(pgsqlBaseDir, conf.UsedVersion, "bin/psql")
+		dataDir = filepath.Join(pgsqlBaseDir, conf.UsedVersion, "data")
+		pgHba = filepath.Join(pgsqlBaseDir, conf.UsedVersion, "data/pg_hba.conf")
+		logDir = filepath.Join(pgsqlBaseDir, conf.UsedVersion, "log")
+		logFile = filepath.Join(logDir, "postgres.log")
+		logPsqlFile = filepath.Join(logDir, "psql.log")
 
-	ni, err = walk.NewNotifyIcon()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer ni.Dispose()
+		cmdInitDbArgs = []string{"-D", dataDir, "-U", username, "-A", "trust", "-E", "UTF8", "--locale=american_usa", "-k", "-n"}
+		cmdStartArgs = []string{"-D", dataDir, "-l", logFile, "-w", "start"}
+		cmdStopArgs = []string{"-D", dataDir, "stop"}
+		cmdStatusArgs = []string{"-D", dataDir, "status"}
+		cmdStartShellArgs = []string{"/C", "start", "/wait", pgShell, "-L", logPsqlFile, "-U", username, username}
 
-	if err := ni.SetIcon(icon); err != nil {
-		log.Fatal(err)
+	} else {
+		showMessage("Please select version first")
+		go RunSettingsDialog()
 	}
-	if err := ni.SetToolTip(strTitle); err != nil {
-		log.Fatal(err)
-	}
-
-	ni.MouseDown().Attach(func(x, y int, button walk.MouseButton) {
-		if button != walk.LeftButton {
-			return
-		}
-
-		if err := ni.ShowCustom(strTitle, strHelp); err != nil {
-			log.Fatal(err)
-		}
-	})
-
-	statusPgServerAction = walk.NewAction()
-	if err := statusPgServerAction.SetText(strStopped); err != nil {
-		log.Fatal(err)
-	}
-	statusPgServerAction.SetEnabled(false)
-	if err := ni.ContextMenu().Actions().Add(statusPgServerAction); err != nil {
-		log.Fatal(err)
-	}
-
-	separatorAction := walk.NewAction()
-	if err := separatorAction.SetText("-"); err != nil {
-		log.Fatal(err)
-	}
-	separatorAction.SetEnabled(false)
-	if err := ni.ContextMenu().Actions().Add(separatorAction); err != nil {
-		log.Fatal(err)
-	}
-
-	startPgServerAction = walk.NewAction()
-	if err := startPgServerAction.SetText(strStart); err != nil {
-		log.Fatal(err)
-	}
-	startPgServerAction.SetEnabled(!serverStatus)
-
-	startPgServerAction.Triggered().Attach(func() { go startingPg() })
-	if err := ni.ContextMenu().Actions().Add(startPgServerAction); err != nil {
-		log.Fatal(err)
-	}
-
-	stopPgServerAction = walk.NewAction()
-	if err := stopPgServerAction.SetText(strStop); err != nil {
-		log.Fatal(err)
-	}
-	stopPgServerAction.SetEnabled(serverStatus)
-
-	stopPgServerAction.Triggered().Attach(func() { go stopingPg() })
-	if err := ni.ContextMenu().Actions().Add(stopPgServerAction); err != nil {
-		log.Fatal(err)
-	}
-
-	separatorAction2 := walk.NewAction()
-	if err := separatorAction2.SetText("-"); err != nil {
-		log.Fatal(err)
-	}
-	separatorAction2.SetEnabled(false)
-	if err := ni.ContextMenu().Actions().Add(separatorAction2); err != nil {
-		log.Fatal(err)
-	}
-
-	startPgShellAction = walk.NewAction()
-	if err := startPgShellAction.SetText(strStartShell); err != nil {
-		log.Fatal(err)
-	}
-	startPgShellAction.SetEnabled(false)
-
-	startPgShellAction.Triggered().Attach(func() { go startShell() })
-	if err := ni.ContextMenu().Actions().Add(startPgShellAction); err != nil {
-		log.Fatal(err)
-	}
-
-	separatorAction3 := walk.NewAction()
-	if err := separatorAction3.SetText("-"); err != nil {
-		log.Fatal(err)
-	}
-	separatorAction3.SetEnabled(false)
-	if err := ni.ContextMenu().Actions().Add(separatorAction3); err != nil {
-		log.Fatal(err)
-	}
-
-	exitAction := walk.NewAction()
-	if err := exitAction.SetText(strExit); err != nil {
-		log.Fatal(err)
-	}
-
-	exitAction.Triggered().Attach(func() { stopingPg(); walk.App().Exit(0) })
-	if err := ni.ContextMenu().Actions().Add(exitAction); err != nil {
-		log.Fatal(err)
-	}
-
-	if err := ni.SetVisible(true); err != nil {
-		log.Fatal(err)
-	}
-
-	go startupCheck()
-
-	mw.Run()
 }
 
 func startupCheck() {
+	checkNewestVersion()
+	findLatest()
 	if _, err := os.Stat(logDir); os.IsNotExist(err) {
 		os.MkdirAll(logDir, 0700)
 	}
 
-	if _, err := os.Stat(pgHba); os.IsNotExist(err) {
-		ni.ShowCustom(strTitle, strInit)
-		statusPgServerAction.SetText(strInit)
-		initdb := exec.Command(pgInitdb, cmdInitDbArgs...)
-		initdb.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	if checkStatus() {
+		if _, err := os.Stat(pgHba); os.IsNotExist(err) {
+			ni.ShowCustom(strTitle, strInit)
+			statusPgServerAction.SetText(strInit)
+			initdb := exec.Command(pgInitdb, cmdInitDbArgs...)
+			initdb.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
-		initdbErr := initdb.Run()
-		if initdbErr != nil {
-			log.Println(err.Error())
-			return
+			initdbErr := initdb.Run()
+			if initdbErr != nil {
+				if os.IsNotExist(initdbErr) {
+					log.Printf("PostgreSQL files for version %s does not exists!\n", conf.UsedVersion)
+				} else {
+					log.Printf("initdb error - %s\n", err.Error())
+				}
+				return
+			}
 		}
-	}
-	ni.ShowCustom(strTitle, strInitFinished)
-	statusPgServerAction.SetText(strStopped)
+		ni.ShowCustom(strTitle, strInitFinished)
+		statusPgServerAction.SetText(strStopped)
 
-	log.Println(strStartupFinished)
+		checkExistingVersions()
+		log.Println(strStartupFinished)
+	}
 }
 
 func startingPg() {
@@ -204,34 +121,39 @@ func startingPg() {
 	startPgErr := startPg.Run()
 	if startPgErr != nil {
 		log.Printf("Starting error: %s\n", startPgErr.Error())
+	} else {
+		serverPid = startPg.Process.Pid
+		if serverPid > 0 {
+			serverStatus = true
+			startPgServerAction.SetEnabled(!serverStatus)
+			stopPgServerAction.SetEnabled(serverStatus)
+			log.Println(strStarted)
+			statusPgServerAction.SetText(strStarted)
+			startPgShellAction.SetEnabled(serverStatus)
+		}
+		checkStatus()
 	}
-	serverPid = startPg.Process.Pid
-	if serverPid > 0 {
-		serverStatus = true
-		startPgServerAction.SetEnabled(!serverStatus)
-		stopPgServerAction.SetEnabled(serverStatus)
-		log.Println(strStarted)
-		statusPgServerAction.SetText(strStarted)
-		startPgShellAction.SetEnabled(serverStatus)
-	}
-	checkStatus()
 }
 
-func stopingPg() {
-	stopPg := exec.Command(pgCtl, cmdStopArgs...)
-	stopPg.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	stopPgErr := stopPg.Run()
-	if stopPgErr != nil {
-		log.Printf("Stopping error: %s\n", stopPgErr.Error())
+func stoppingPg() {
+	if serverStatus {
+		stopPg := exec.Command(pgCtl, cmdStopArgs...)
+		log.Printf("stopPg args - %v\n", stopPg.Args)
+		stopPg.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		stopPgErr := stopPg.Run()
+		if stopPgErr != nil {
+			log.Printf("Stopping error: %s\n", stopPgErr.Error())
+		} else {
+			serverPid = 0
+			serverStatus = false
+			startPgServerAction.SetEnabled(!serverStatus)
+			stopPgServerAction.SetEnabled(serverStatus)
+			log.Println(strStopped)
+			statusPgServerAction.SetText(strStopped)
+			startPgShellAction.SetEnabled(serverStatus)
+			checkStatus()
+		}
 	}
-	serverPid = 0
-	serverStatus = false
-	startPgServerAction.SetEnabled(!serverStatus)
-	stopPgServerAction.SetEnabled(serverStatus)
-	log.Println(strStopped)
-	statusPgServerAction.SetText(strStopped)
-	startPgShellAction.SetEnabled(serverStatus)
-	checkStatus()
 }
 
 func startShell() {
@@ -240,18 +162,28 @@ func startShell() {
 		startSh.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 		startShErr := startSh.Run()
 		log.Println(strStarting)
-		if startShErr != nil {
-			log.Printf("Starting shell error: %s\n", startShErr.Error())
-		}
+		checkErr("Starting shell error", startShErr)
 	}
 }
 
-func checkStatus() {
-	statusPg := exec.Command(pgCtl, cmdStatusArgs...)
-	statusPg.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	out, statusPgErr := statusPg.Output()
-	if statusPgErr != nil {
-		log.Printf("checkStatus error: %s", statusPgErr)
+func checkStatus() bool {
+	result := false
+	if checkExecExists(pgCtl) {
+		statusPg := exec.Command(pgCtl, cmdStatusArgs...)
+		statusPg.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		statusPgErr := statusPg.Run()
+		if statusPgErr != nil {
+			if statusPgErr.Error() == "exit status 3" {
+				log.Println("Server not running!")
+			} else {
+				log.Printf("checkStatus error: '%s'", statusPgErr.Error())
+			}
+			result = false
+		}
+		result = true
+	} else {
+		log.Printf("Version %s is not installed! Install it first!\n", conf.UsedVersion)
+		result = false
 	}
-	log.Println(string(out))
+	return result
 }
