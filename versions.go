@@ -1,9 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/blang/semver"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
