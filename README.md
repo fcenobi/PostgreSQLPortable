@@ -10,13 +10,13 @@ go build -ldflags "-H=windowsgui"
 ```
 
 ## Current status
-[x] Config file
-[x] Download PostgreSQL distributive
-[x] Extracting downloaded archive
-[x] Show settings dialog on first start
-[ ] Show downloading/extracting progress on the tray icon tooltip
-[ ] Auto-install on startup
-[ ] Check for updates
+ - [x] Config file
+ - [x] Download PostgreSQL distributive
+ - [x] Extracting downloaded archive
+ - [x] Show settings dialog on first start
+ - [ ] Show downloading/extracting progress on the tray icon tooltip
+ - [ ] Auto-install on startup
+ - [ ] Check for updates
 
 ---
 
@@ -32,13 +32,13 @@ go build -ldflags "-H=windowsgui"
 ```
 
 ## Текущий статус
-[x] Файл конфигурации
-[x] Загрузка выбраного дистрибутива
-[x] Распаковка загруженного архива
-[x] Показ диалога настроек при первом запуске
-[ ] Показ прогресса загрузки/распаковки в подсказке иконки в трее
-[ ] Автоустановка при запуске
-[ ] Проверка обновлений
+ - [x] Файл конфигурации
+ - [x] Загрузка выбраного дистрибутива
+ - [x] Распаковка загруженного архива
+ - [x] Показ диалога настроек при первом запуске
+ - [ ] Показ прогресса загрузки/распаковки в подсказке иконки в трее
+ - [ ] Автоустановка при запуске
+ - [ ] Проверка обновлений
 
 ## Исправление кодировки в psql консоли
 Шрифты в консоли могут не корректно отображаться.
