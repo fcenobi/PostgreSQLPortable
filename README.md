@@ -10,6 +10,9 @@ go build -ldflags "-H=windowsgui"
 ```
 
 ## Current status
+ - [x] Windows support
+ - [ ] Linux support
+ - [ ] OSX support
  - [x] Config file
  - [x] Download PostgreSQL distributive
  - [x] Extracting downloaded archive
@@ -32,8 +35,11 @@ go build -ldflags "-H=windowsgui"
 ```
 
 ## Текущий статус
+ - [x] Поддержка Windows
+ - [ ] Поддержка Linux
+ - [ ] Поддержка OSX
  - [x] Файл конфигурации
- - [x] Загрузка выбраного дистрибутива
+ - [x] Загрузка выбранного дистрибутива
  - [x] Распаковка загруженного архива
  - [x] Показ диалога настроек при первом запуске
  - [ ] Показ прогресса загрузки/распаковки в подсказке иконки в трее
@@ -41,11 +47,13 @@ go build -ldflags "-H=windowsgui"
  - [ ] Проверка обновлений
 
 ## Исправление кодировки в psql консоли
-Шрифты в консоли могут не корректно отображаться.
+У русскоязычных пользователей Windows шрифты в консоли могут не корректно отображаться.
 Для исправления этой проблемы рекомендую:
-1. Изменить шрифт консоли по умолчанию на Lucida Console или любой поддерживающий Unicode
-2. Cоздать/добавить в файл `%APPDATA%\postgresql\psqlrc.conf` следующие строки:
+
+1. Изменить шрифт консоли по умолчанию на `Lucida Console` или любой поддерживающий Unicode
+2. Создать/добавить в файл `%APPDATA%\postgresql\psqlrc.conf` следующие строки:
+
 ```
-\! chcp 1251
+\! chcp 1251  
 SET client_encoding = 'UTF8'
 ```
