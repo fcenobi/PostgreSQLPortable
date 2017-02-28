@@ -3,8 +3,9 @@
 ## Description
 It allows you to control the portable version PostgreSQL from the tray icon.
 
-## Building
+## Building for Windows
 ```
+go get github.com/josephspurrier/goversioninfo/cmd/goversioninfo
 go generate
 go build -ldflags "-H=windowsgui"
 ```
@@ -28,8 +29,9 @@ go build -ldflags "-H=windowsgui"
 ## Описание
 Позволяет управлять портабельной версией PostgreSQL из трея.
 
-## Сборка
+## Сборка для Windows
 ```
+go get github.com/josephspurrier/goversioninfo/cmd/goversioninfo
 go generate
 go build -ldflags "-H=windowsgui"
 ```
