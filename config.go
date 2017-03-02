@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
+	"path/filepath"
 )
 
 type Configuration struct {
@@ -14,24 +15,28 @@ type Configuration struct {
 	Locale            string
 }
 
-func loadConfig() {
-	log.Println("Reading config...")
-	bytes, err := ioutil.ReadFile(configFile)
+func NewConfiguration() *Configuration {
+	return &Configuration{UsedVersion: "", CheckForUpdates: false, AutoInstallLatest: false, Username: "postgres", Locale: "american_usa"}
+}
+
+func loadConfig() error {
+	bytes, err := ioutil.ReadFile(filepath.Join(dir, configFile))
 	if err != nil {
-		log.SetPrefix("ERROR")
-		log.Printf("Can't read config file : %s\n", err.Error())
-		return
+		log.Printf("Can't read config file: %s\n", err.Error())
+		return err
 	}
-	err = json.Unmarshal(bytes, &conf)
-	checkErr("Can't parse config", err)
+	if err = json.Unmarshal(bytes, &conf); err != nil {
+    	log.Printf("Can't parse config: %s\n", err.Error())
+    	return err
+    }
+	return nil
 }
 
 func saveConfig() error {
-	log.Println("Writing config...")
 	bytes, err := json.MarshalIndent(conf, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(configFile, bytes, 0644)
+	return ioutil.WriteFile(filepath.Join(dir, configFile), bytes, 0644)
 }

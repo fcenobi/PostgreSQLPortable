@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -81,6 +82,42 @@ func contains(s []string, e string) bool {
 	return false
 }
 
+func setPaths() {
+	if len(conf.UsedVersion) > 0 {
+		pgInitdb = filepath.Join(pgsqlBaseDir, conf.UsedVersion, "bin/initdb")
+		pgCtl = filepath.Join(pgsqlBaseDir, conf.UsedVersion, "bin/pg_ctl")
+		pgShell = filepath.Join(pgsqlBaseDir, conf.UsedVersion, "bin/psql")
+		dataDir = filepath.Join(pgsqlBaseDir, conf.UsedVersion, "data")
+		pgHba = filepath.Join(pgsqlBaseDir, conf.UsedVersion, "data/pg_hba.conf")
+		logDir = filepath.Join(pgsqlBaseDir, conf.UsedVersion, "log")
+		logFile = filepath.Join(logDir, "postgres.log")
+		logPsqlFile = filepath.Join(logDir, "psql.log")
+
+		cmdInitDbArgs = []string{"-D", dataDir, "-U", username, "-A", "trust", "-E", "UTF8", "--locale=american_usa", "-k", "-n"}
+		cmdStartArgs = []string{"-D", dataDir, "-l", logFile, "-w", "start"}
+		cmdStopArgs = []string{"-D", dataDir, "stop"}
+		cmdStatusArgs = []string{"-D", dataDir, "status"}
+		cmdStartShellArgs = []string{"/C", "start", "/wait", pgShell, "-L", logPsqlFile, "-U", username, username}
+
+	} else {
+		ShowMessage(strPSVF)
+		go ShowSettingsDialog()
+	}
+}
+
+//func dataExists() {
+//	if checkServerStatus() {
+//		if _, err := os.Stat(pgHba); os.IsNotExist(err) {
+//			ShowNotification(strInit)
+//			SetStatus(strInit)
+//			initdb()
+//		}
+//		ShowNotification(strInitFinished)
+//		SetStatus(strStopped)
+//		log.Println(strStartupFinished)
+//	}
+//}
+
 func download(ver string) string {
 	url := fmt.Sprintf("http://get.enterprisedb.com/postgresql/postgresql-%s-1-%s%s-binaries.%s", ver, osName, osArch, archiveType)
 	tokens := strings.Split(url, "/")
@@ -93,8 +130,8 @@ func download(ver string) string {
 	destName := fmt.Sprintf("%s/%s", destDir, fileName)
 
 	if _, err := os.Stat(destName); os.IsNotExist(err) {
-		ni.ShowCustom(strTitle, fmt.Sprintf("Downloading version %s", ver))
-		ni.SetToolTip(fmt.Sprintf("%s: Downloading version %s. Please wait", strTitle, ver))
+		ShowNotification(fmt.Sprintf(strDVPW, ver))
+		SetNotificationToolTip(fmt.Sprintf(strDVPW, ver))
 
 		log.Printf("Downloading %s to %s\n", url, destName)
 
@@ -131,9 +168,9 @@ func download(ver string) string {
 		}
 
 		log.Println(n, "bytes downloaded.")
-		ni.ShowInfo(strTitle, "Download finished!")
+		ShowNotification("Download finished!")
 	} else {
-		log.Printf("Already downloaded")
+		log.Println("Already downloaded")
 	}
 	return destName
 }
@@ -141,6 +178,11 @@ func download(ver string) string {
 func install(v string) {
 	f := download(v)
 	extract(f, v)
+	if _, err := os.Stat(logDir); os.IsNotExist(err) {
+		os.MkdirAll(logDir, 0700)
+	}
+	initdb()
+	ShowNotification("")
 }
 
 func checkExecExists(c string) bool {
@@ -153,6 +195,6 @@ func checkExecExists(c string) bool {
 }
 
 func quit() {
-	stoppingPg()
-	appQuit()
+	stopPg()
+	AppQuit()
 }

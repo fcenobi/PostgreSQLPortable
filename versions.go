@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
-	"github.com/blang/semver"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/blang/semver"
 )
 
 func checkAvailableVersions() []string {
@@ -18,6 +19,7 @@ func checkAvailableVersions() []string {
 			availableVersions = append(availableVersions, ver)
 		})
 	} else {
+		ShowNotification("Can't check available versions")
 		log.Println("Can't check available versions")
 	}
 	return availableVersions
@@ -34,17 +36,20 @@ func checkExistingVersions() []string {
 			existingVersions = append(existingVersions, f.Name())
 		}
 	}
-	if len(existingVersions) == 0 {
+	if len(existingVersions) == 0 && conf.AutoInstallLatest {
 		latest := getMax(checkAvailableVersions())
-		extract(download(latest), latest)
+		go install(latest)
 	}
 	return existingVersions
 }
 
 func checkNewestVersion() {
-	// TODO: compare lists
+	var resultMsg string
 	ev := checkExistingVersions()
 	av := checkAvailableVersions()
+	if len(ev) == 0 {
+		resultMsg = strNIV
+	}
 	for _, e := range ev {
 		ve, _ := semver.Make(e)
 		for _, a := range av {
@@ -54,10 +59,13 @@ func checkNewestVersion() {
 			va, _ := semver.Make(a)
 			if (ve.Major == va.Major) && (ve.Minor == va.Minor) {
 				if ve.Patch < va.Patch {
-					log.Printf("!!! New version '%s' available for %s (existing %s)\n", va, fmt.Sprintf("%d.%d", ve.Major, ve.Minor), ve)
+					resultMsg += fmt.Sprintf("New version '%s' available for %d.%d (existing %s)\n", va, ve.Major, ve.Minor, ve)
 				}
 			}
 		}
+	}
+	if len(resultMsg) != 0 {
+		ShowNotification(resultMsg)
 	}
 }
 

@@ -12,7 +12,7 @@ var (
 	settingsDlg = &SettingsDialogWindow{model: NewAVModel()}
 
 	db *walk.DataBinder
-	ep walk.ErrorPresenter
+	SD Dialog
 )
 
 type SettingsDialogWindow struct {
@@ -61,30 +61,28 @@ func (m *AVModel) Value(index int) interface{} {
 
 func (sd *SettingsDialogWindow) ev_ItemActivated() {
 	value := settingsDlg.model.items[settingsDlg.availableVersionsLB.CurrentIndex()].value
-	answer := walk.MsgBox(nil, "PostgreSQL Portable", fmt.Sprintf("Are you sure to install PostgreSQL %s?", value), walk.MsgBoxOKCancel+walk.MsgBoxIconQuestion)
+	answer := AskQuestion(fmt.Sprintf(strAUSI, value))
 	if answer == 1 {
-		log.Printf("Installing PostgreSQL %s\n", value)
+		log.Printf(strInstalling, value)
+		conf.UsedVersion = value
+		setPaths()
 		go install(value)
 	}
 }
 
-func showMessage(msg string) {
-	walk.MsgBox(nil, strTitle, msg, walk.MsgBoxIconInformation)
-}
-
-func RunSettingsDialog() (int, error) {
-	SD := Dialog{
+func ShowSettingsDialog() {
+	SD = Dialog{
 		AssignTo: &settingsDlg.Dialog,
-		Title:    "Settings",
+		Title:    strSettings,
 		DataBinder: DataBinder{
 			AssignTo:   &db,
 			DataSource: conf,
 		},
-		Size:      Size{250, 200},
-		MinSize:   Size{250, 200},
-		MaxSize:   Size{250, 200},
+		Size:      Size{Width: 250, Height: 200},
+		MinSize:   Size{Width: 250, Height: 200},
+		MaxSize:   Size{Width: 250, Height: 200},
 		FixedSize: true,
-		Layout:    VBox{Margins{5, 5, 5, 5}, 5, false, false},
+		Layout:    VBox{Margins: Margins{Left: 5, Top: 5, Right: 5, Bottom: 5}, Spacing: 5, MarginsZero: false, SpacingZero: false},
 		Children: []Widget{
 			Composite{
 				Layout: VBox{},
@@ -103,8 +101,8 @@ func RunSettingsDialog() (int, error) {
 					},
 					ListBox{
 						AssignTo:        &settingsDlg.availableVersionsLB,
-						MinSize:         Size{50, 70},
-						MaxSize:         Size{50, 70},
+						MinSize:         Size{Width: 50, Height: 70},
+						MaxSize:         Size{Width: 50, Height: 70},
 						Model:           settingsDlg.model,
 						OnItemActivated: settingsDlg.ev_ItemActivated,
 					},
@@ -152,7 +150,7 @@ func RunSettingsDialog() (int, error) {
 				Children: []Widget{
 					PushButton{
 						AssignTo: &settingsDlg.acceptPB,
-						Text:     "OK",
+						Text:     strOK,
 						OnClicked: func() {
 							if err := db.Submit(); err != nil {
 								log.Println(err)
@@ -165,7 +163,7 @@ func RunSettingsDialog() (int, error) {
 					},
 					PushButton{
 						AssignTo: &settingsDlg.cancelPB,
-						Text:     "Cancel",
+						Text:     strCancel,
 						OnClicked: func() {
 							settingsDlg.Hide()
 						},
@@ -174,5 +172,5 @@ func RunSettingsDialog() (int, error) {
 			},
 		},
 	}
-	return SD.Run(nil)
+	SD.Run(nil)
 }

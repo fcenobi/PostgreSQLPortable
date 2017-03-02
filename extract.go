@@ -14,8 +14,8 @@ import (
 )
 
 func extract(filename, ver string) {
-	ni.ShowInfo(strTitle, fmt.Sprintf("Extracting version %s", ver))
-	ni.SetToolTip(fmt.Sprintf("%s: Extracting version %s", strTitle, ver))
+	ShowNotification(fmt.Sprintf(strExtrV, ver))
+	SetNotificationToolTip(fmt.Sprintf(strExtrV, ver))
 	log.Println("Extracting...")
 	ext := path.Ext(filename)
 	if ext == ".zip" {
@@ -27,8 +27,8 @@ func extract(filename, ver string) {
 	} else if ext == ".7z" {
 		log.Println("7z archive not allowed")
 	}
-	ni.ShowInfo(strTitle, fmt.Sprintf("Extracting version %s finished", ver))
-	ni.SetToolTip(strTitle)
+	ShowNotification(fmt.Sprintf(strExtrVF, ver))
+	SetNotificationToolTip("")
 }
 
 func unzip(filename, dest string) {
@@ -49,7 +49,7 @@ func unzip(filename, dest string) {
 		checkErr("Extract error", err)
 
 		fpath = filepath.Join(dest, strings.Replace(f.Name, "pgsql", "", 1))
-		log.Println(fpath)
+		// log.Println(fpath)
 
 		if f.FileInfo().IsDir() {
 			os.MkdirAll(fpath, f.Mode())
