@@ -4,8 +4,8 @@
 It allows you to control the portable version PostgreSQL from the tray icon.
 
 ## Building for Windows
+You need `windres` for resource generation. Available from MinGW installation.
 ```
-go get github.com/josephspurrier/goversioninfo/cmd/goversioninfo
 go generate
 go build -ldflags "-H=windowsgui"
 ```
@@ -30,8 +30,8 @@ go build -ldflags "-H=windowsgui"
 Позволяет управлять портабельной версией PostgreSQL из трея.
 
 ## Сборка для Windows
+Необходима `windres` для генерации ресурсов. Доступна в установке MinGW.
 ```
-go get github.com/josephspurrier/goversioninfo/cmd/goversioninfo
 go generate
 go build -ldflags "-H=windowsgui"
 ```

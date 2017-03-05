@@ -1,4 +1,4 @@
-//go:generate goversioninfo -icon=resources/windows/postgresql-multi-size.ico -manifest=PostgreSQLPortable.manifest
+//go:generate windres -i PostgreSQLPortable.rc -O coff -o resource.syso
 package main
 
 import (
@@ -51,7 +51,7 @@ func CreateTray() {
 	}
 	mw.Hide()
 
-	icon, err := walk.NewIconFromResourceId(10)
+	icon, err := walk.NewIconFromResourceId(1)
 	if err != nil {
 		log.Fatal(err)
 	}
