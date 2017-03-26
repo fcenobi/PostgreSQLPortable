@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 )
 
+// Configuration for storing program settings
 type Configuration struct {
 	UsedVersion       string
 	CheckForUpdates   bool
@@ -15,6 +16,7 @@ type Configuration struct {
 	Locale            string
 }
 
+// NewConfiguration used for creating Constructor instance
 func NewConfiguration() *Configuration {
 	return &Configuration{UsedVersion: "", CheckForUpdates: false, AutoInstallLatest: false, Username: "postgres", Locale: "american_usa"}
 }
@@ -26,9 +28,9 @@ func loadConfig() error {
 		return err
 	}
 	if err = json.Unmarshal(bytes, &conf); err != nil {
-    	log.Printf("Can't parse config: %s\n", err.Error())
-    	return err
-    }
+		log.Printf("Can't parse config: %s\n", err.Error())
+		return err
+	}
 	return nil
 }
 

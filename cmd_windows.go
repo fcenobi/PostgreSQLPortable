@@ -9,6 +9,8 @@ import (
 )
 
 func initdb() bool {
+	SetStatus(strInit)
+	log.Println(strInit)
 	initdb := exec.Command(pgInitdb, cmdInitDbArgs...)
 	initdb.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
@@ -21,11 +23,13 @@ func initdb() bool {
 		}
 		return false
 	}
+	SetStatus(strInitFinished)
+	log.Println(strInitFinished)
 	return true
 }
 
 func startPg() {
-	if checkServerStatus() {
+	if !checkServerStatus() {
 		startPg := exec.Command(pgCtl, cmdStartArgs...)
 		startPg.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 		startPgErr := startPg.Run()
@@ -36,11 +40,11 @@ func startPg() {
 			serverPid = startPg.Process.Pid
 			if serverPid > 0 {
 				serverStatus = true
-				startPgServerAction.SetEnabled(!serverStatus)
-				stopPgServerAction.SetEnabled(serverStatus)
+				EnableStart(!serverStatus)
+				EnableStop(serverStatus)
 				log.Println(strStarted)
-				statusPgServerAction.SetText(strStarted)
-				startPgShellAction.SetEnabled(serverStatus)
+				SetStatus(strStarted)
+				EnableShell(serverStatus)
 			}
 		}
 	} else {
@@ -58,18 +62,18 @@ func stopPg() {
 		} else {
 			serverPid = 0
 			serverStatus = false
-			startPgServerAction.SetEnabled(!serverStatus)
-			stopPgServerAction.SetEnabled(serverStatus)
+			EnableStart(!serverStatus)
+			EnableStop(serverStatus)
 			log.Println(strStopped)
-			statusPgServerAction.SetText(strStopped)
-			startPgShellAction.SetEnabled(serverStatus)
+			SetStatus(strStopped)
+			EnableShell(serverStatus)
 			checkServerStatus()
 		}
 	}
 }
 
 func checkServerStatus() bool {
-	result := false
+	var result bool
 	if checkExecExists(pgCtl) {
 		statusPg := exec.Command(pgCtl, cmdStatusArgs...)
 		statusPg.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
@@ -77,23 +81,41 @@ func checkServerStatus() bool {
 		if statusPgErr != nil {
 			if statusPgErr.Error() == "exit status 3" {
 				log.Println(strSNR)
+				result = false
 			} else if statusPgErr.Error() == "exit status 4" {
 				log.Println(strDNI)
 				answer := AskQuestion(fmt.Sprintf("%s Initialize?", strDNI))
 				if answer == 1 {
-					return initdb()
+					result = initdb()
 				} else {
-					return false
+					SetStatus(strStopped)
+					result = false
 				}
 			} else {
 				log.Printf("checkStatus error: '%s'", statusPgErr.Error())
 			}
+			SetStatus(strStopped)
 			result = false
+		} else {
+			result = true
 		}
-		result = true
 	} else {
 		log.Printf(strIIF, conf.UsedVersion)
+		if AskQuestion(fmt.Sprintf(strIIF, conf.UsedVersion)) == 1 {
+			go install(conf.UsedVersion)
+		}
 		result = false
+	}
+	if result {
+		SetStatus(strStarted)
+		EnableStart(false)
+		EnableStop(true)
+		EnableShell(true)
+	} else {
+		SetStatus(strStopped)
+		EnableStart(true)
+		EnableStop(false)
+		EnableShell(false)
 	}
 	return result
 }

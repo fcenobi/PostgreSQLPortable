@@ -176,6 +176,9 @@ func download(ver string) string {
 }
 
 func install(v string) {
+	SetStatus(fmt.Sprintf(strInstalling, v))
+	EnableStart(false)
+
 	f := download(v)
 	extract(f, v)
 	if _, err := os.Stat(logDir); os.IsNotExist(err) {
@@ -183,6 +186,7 @@ func install(v string) {
 	}
 	initdb()
 	ShowNotification("")
+	checkServerStatus()
 }
 
 func checkExecExists(c string) bool {

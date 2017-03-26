@@ -59,7 +59,7 @@ func (m *AVModel) Value(index int) interface{} {
 	return m.items[index].name
 }
 
-func (sd *SettingsDialogWindow) ev_ItemActivated() {
+func (sd *SettingsDialogWindow) evItemActivated() {
 	value := settingsDlg.model.items[settingsDlg.availableVersionsLB.CurrentIndex()].value
 	answer := AskQuestion(fmt.Sprintf(strAUSI, value))
 	if answer == 1 {
@@ -104,7 +104,7 @@ func ShowSettingsDialog() {
 						MinSize:         Size{Width: 50, Height: 70},
 						MaxSize:         Size{Width: 50, Height: 70},
 						Model:           settingsDlg.model,
-						OnItemActivated: settingsDlg.ev_ItemActivated,
+						OnItemActivated: settingsDlg.evItemActivated,
 					},
 				},
 			},
@@ -158,6 +158,7 @@ func ShowSettingsDialog() {
 							}
 							saveConfig()
 							setPaths()
+							checkServerStatus()
 							settingsDlg.Hide()
 						},
 					},

@@ -51,7 +51,7 @@ func CreateTray() {
 	}
 	mw.Hide()
 
-	icon, err := walk.NewIconFromResourceId(1)
+	icon, err := walk.NewIconFromResourceId(101)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -79,9 +79,12 @@ func CreateTray() {
 	if err := statusPgServerAction.SetText(strStopped); err != nil {
 		log.Fatal(err)
 	}
-	statusPgServerImg, _ := walk.NewBitmapFromFile(imgStatus)
+	statusPgServerImg, stsImgErr := walk.NewBitmapFromFile(imgStatus)
+	if stsImgErr != nil {
+		log.Printf("status resource - %s\n", stsImgErr.Error())
+	}
 	if err := statusPgServerAction.SetImage(statusPgServerImg); err != nil {
-		log.Fatal(err)
+		log.Printf("statusPgServerAction - %v\n", err.Error())
 	}
 	statusPgServerAction.SetEnabled(false)
 	if err := ni.ContextMenu().Actions().Add(statusPgServerAction); err != nil {
@@ -216,6 +219,18 @@ func CreateTray() {
 
 func SetStatus(msg string) {
 	statusPgServerAction.SetText(msg)
+}
+
+func EnableStart(enable bool) {
+	startPgServerAction.SetEnabled(enable)
+}
+
+func EnableStop(enable bool) {
+	stopPgServerAction.SetEnabled(enable)
+}
+
+func EnableShell(enable bool) {
+	startPgShellAction.SetEnabled(enable)
 }
 
 func ShowMessage(msg string) {

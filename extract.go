@@ -14,8 +14,9 @@ import (
 )
 
 func extract(filename, ver string) {
-	ShowNotification(fmt.Sprintf(strExtrV, ver))
-	SetNotificationToolTip(fmt.Sprintf(strExtrV, ver))
+	//	ShowNotification(fmt.Sprintf(strExtrV, ver))
+	//	SetNotificationToolTip(fmt.Sprintf(strExtrV, ver))
+	//	SetStatus(fmt.Sprintf(strExtrV, ver))
 	log.Println("Extracting...")
 	ext := path.Ext(filename)
 	if ext == ".zip" {
@@ -48,22 +49,25 @@ func unzip(filename, dest string) {
 		zipped, err := f.Open()
 		checkErr("Extract error", err)
 
-		fpath = filepath.Join(dest, strings.Replace(f.Name, "pgsql", "", 1))
+		fpath = filepath.Join(dest, strings.Replace(f.Name, "pgsql/", "", 1))
 		// log.Println(fpath)
+		// log.Println(strings.Replace(f.Name, "pgsql/", "", 1))
 
-		if f.FileInfo().IsDir() {
+		if f.FileInfo().IsDir() && !(strings.HasPrefix(strings.Replace(f.Name, "pgsql/", "", 1), "pgAdmin")) {
 			os.MkdirAll(fpath, f.Mode())
 		} else {
-			writer, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE, f.Mode())
-			if err != nil {
-				log.Printf("Extract error::OpenFileFromArchive - %s\n", err)
-			}
+			if !(strings.HasPrefix(strings.Replace(f.Name, "pgsql/", "", 1), "pgAdmin")) {
+				writer, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE, f.Mode())
+				if err != nil {
+					log.Printf("Extract error::OpenFileFromArchive - %s\n", err)
+				}
 
-			if _, err = io.Copy(writer, zipped); err != nil {
-				log.Println(err)
-				os.Exit(1)
+				if _, err = io.Copy(writer, zipped); err != nil {
+					log.Println(err)
+					os.Exit(1)
+				}
+				defer writer.Close()
 			}
-			defer writer.Close()
 		}
 		defer zipped.Close()
 	}
