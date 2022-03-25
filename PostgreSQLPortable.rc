@@ -24,7 +24,7 @@ BEGIN
       VALUE "ProductVersion",   "v1.1"
       VALUE "LegalCopyright",   "© 2017 Bukharev Vasily"
       VALUE "FileDescription",  "PostgreSQL Portable Launcher"
-      VALUE "CompanyName",      "Soul Lab"
+      VALUE "CompanyName",      "mngt"
       VALUE "FileVersion",      "v1.1.0"
       VALUE "InternalName",     "PostgreSQLPortable"
       VALUE "OriginalFilename", "PostgreSQLPortable.exe"
